@@ -6,18 +6,13 @@
 
 ### Header
 ```
-+---------+------------+---------+-----------+----------------+-------------+------------+--------------+
-|Magic(8B)| Version(2B)| Size(4B)| Chksum(4B)| MetaOffset (4B)| MetaLen (4B)| MetaCnt(2B)| Reserved(36B)|
-+---------+------------+---------+-----------+----------------+-------------+------------+--------------+
++---------+------------+--------------+
+|Magic(8B)| Version(2B)| Reserved(22B)|
++---------+------------+--------------+
 
 Magic = Engine identity (0x01346616). TAE only
 Version = Object file version
-Size = Header size
-Chksum = Header CheckSum(This field is 0 when calculating)
-MetaOffset = The offset of Block metadata
-MetaLen = The length of Block metadata
-MetaCnt = The number of block metadata in Object
-Reserved = 36 bytes reserved space
+Reserved = 22 bytes reserved space
 ```
 ### Meta
 
@@ -30,9 +25,9 @@ Reserved = 36 bytes reserved space
        |
 +-------------------------------------------------------------------------------------------------------+
 |                                                 Header                                                |
-+------------+-----------+-----------+--------+----------+-------------+------------+-------------------+
-| Version(2B)|TableID(8B)|BlockID(8B)|Algo(1B)|Offset(4B)|MateCnt(128B)|MateSize(4B)|   Reserved(33B)   |
-+------------+-----------+-----------+--------+----------+-------------+------------+-------------------+
++---------------+---------------+------------+-----------------+--------------+-------------------------+
+|  TableID(8B)  |  BlockID(8B)  |  Algo(1B)  |  ColumnCnt(2B)  |  Chksum(4B)  |      Reserved(41B)      |
++---------------+---------------+------------+-----------------+--------------+-------------------------+
 |                                                ColumnMeta                                             |
 +-------------------------------------------------------------------------------------------------------+
 |                                                ColumnMeta                                             |
@@ -42,29 +37,27 @@ Reserved = 36 bytes reserved space
 |                                                ..........                                             |
 +-------------------------------------------------------------------------------------------------------+
 Header Size = 64B
-Version = Meta version
 TableID = Table ID for Block
 BlockID = Block ID
-Algo = Compression algorithm
-Offset = Metadata offset of column in block
-MateCnt = The number of metadata of the column in the block
-MateSize = Column metadata Size (128b)
-Reserved = 33 bytes reserved space
+Algo = Type of compression algorithm for block data
+ColumnCnt = The number of column in the block
+Chksum = Block metadata checksum
+Reserved = 41 bytes reserved space
 ```
 ##### Column Meta
 ```
 +---------------------------------------------------------------------------------------------------------------+
 |                                                    ColumnMeta                                                 |
-+--------+-------+----------+-------+---------+--------+--------+------------+---------+-----------+------------+
-|Type(1B)|Idx(2B)|Offset(4B)|Len(4B)|oSize(4B)|Min(32B)|Max(32B)|BFoffset(4b)|BFlen(4b)|BFoSize(4B)|Chksum(4B)  |
-+--------+-------+----------+-------+---------+--------+--------+------------+---------+-----------+------------+
++--------+-------+----------+--------+---------+--------+--------+------------+---------+-----------+-----------+
+|Type(1B)|Idx(2B)|Offset(4B)|Size(4B)|oSize(4B)|Min(32B)|Max(32B)|BFoffset(4b)|BFlen(4b)|BFoSize(4B)|Chksum(4B) |
++--------+-------+----------+--------+---------+--------+--------+------------+---------+-----------+-----------+
 |                                                    Reserved(33B)                                              |
 +---------------------------------------------------------------------------------------------------------------+
 ColumnMeta Size = 128B
 Type = Metadata type, always 0, representing column meta, used for extension.
 Idx = Column index
 Offset = Offset of column data
-Len = Size of column data
+Size = Size of column data
 oSize = Original data size
 Min = Column min value
 Max = Column Max value
@@ -74,3 +67,23 @@ BFoSize = Bloomfilter original data size
 Chksum = Data checksum
 Reserved = 33 bytes reserved space
 ```
+##### Foot
+```
++------------+------------+-------------+----+--------------+----------------+------------+
+| <Extent-1> | <Extent-2> |  <Extent-3> |....| MetaAlgo(1B) | ExtentsSize(4B)| Magic (8B) |
++------------+------------+-------------+----+--------------+----------------+------------+
+        |
+        |
++----------------+--------------+-----------------+
+| MetaOffset(4B) | MetaSize(4B) |  MetaOSize (4B) |
++----------------+--------------+-----------------+
+Magic = Engine identity (0x01346616). TAE only
+ExtentsSize = The size of the meta extents area in the foot.
+MetaAlgo = Type of compression algorithm for block metadata
+```
+##### Extent
+```
+An extent records the address of a block's metadata in the object
+MetaOffset = Offset of block metadata
+MetaSize = Size of block metadata
+MetaOSize = Original metadata size
