@@ -4,105 +4,145 @@
 
 ![Layout.jpg](image/Layout.jpg)
 
+### Extent
+
+```
++------------+----------+-------------+
+| Offset(4B) | Size(4B) |  OSize (4B) |
++------------+----------+-------------+
+
+Extent Size = 12B
+An extent records the address of a data/meta unit in the object
+Offset = Offset of Metadata/ColumnData/BloomFilter
+Size = Size of Metadata/ColumnData/BloomFilter
+oSize = Original Metadata/ColumnData/BloomFilter size
+```
+
 ### Header
 ```
-+---------+------------+--------------+
-|Magic(8B)| Version(2B)| Reserved(22B)|
-+---------+------------+--------------+
++---------+------------+----------+---------------+-----------+--------------+
+|Magic(8B)| Version(2B)| Algo(1B) |MetaExtent(12B)| Chksum(4B)| Reserved(22B)|
++---------+------------+----------+---------------+-----------+--------------+
 
+Header Size = 64B
 Magic = Engine identity (0x01346616). TAE only
 Version = Object file version
-Reserved = 22 bytes reserved space
+Algo = Compression algorithm type for Metadata
+MetaExtent = Extent of Metadata
+Chksum = Metadata checksum
+Reserved = 21 bytes reserved space
 ```
 ### Meta
+```
++----------------------------------------------------------------------------------------------+
+|                                         <Object Meta>                                        |
++----------------------------------------------------------------------------------------------+
+|                                      <Object Zonemap Area>                                   |
++----------------------------------------------------------------------------------------------+
+|                                         <BlockMeta-1>                                        |
++----------------------------------------------------------------------------------------------+
+|                                         <BlockMeta-2>                                        |
++----------------------------------------------------------------------------------------------+
+|                                          ..........                                          |
++----------------------------------------------------------------------------------------------+
+|                                     <Block Zonemap Area>                                     |
++----------------------------------------------------------------------------------------------+
 
+
+```
+
+##### Object Meta
+```
++---------+------------+--------------+-----------------------+
+| Ndv(4B) | NullCnt(4B)| Reserved(24B)| <Object Zonemap Area> |
++---------+------------+--------------+-----------------------+
+                                              |
+                                              |
++-----------------+-----------------+-----------------+-----------------+-----------------+
+| Col1 Zonemap(64)| Col2 Zonemap(64)| Col3 Zonemap(64)| Col4 Zonemap(64)|      ......     |
++-----------------+-----------------+-----------------+-----------------+-----------------+
+Ndv = Engine identity (0x01346616). TAE only
+NullCnt = Object file version
+Zonemap Area = The Zonemap of each column at the object level
+Zonemap = Contains tow 32B values: min and max
+
+```
 ##### Block Meta Header
 ```
-+---------------+---------------+----------------+----
-| <BlockMeta-1> | <BlockMeta-2> |  <BlockMeta-3> |....
-+---------------+---------------+----------------+----
++---------------+---------------+----------------+----+----------------------+
+| <BlockMeta-1> | <BlockMeta-2> |  <BlockMeta-3> |....| <Block Zonemap Area> |
++---------------+---------------+----------------+----+----------------------+
        |
        |
-+-------------------------------------------------------------------------------------------------------+
-|                                                 Header                                                |
-+-------------+---------------+-------------+----------+---------------+------------+-------------------+
-| TableID(8B) | SegmentID(8B) | BlockID(8B) | Algo(1B) | ColumnCnt(2B) | Chksum(4B) |  Reserved(33B)    |
-+-------------+---------------+-------------+----------+---------------+------------+-------------------+
-|                                                ColumnMeta                                             |
-+-------------------------------------------------------------------------------------------------------+
-|                                                ColumnMeta                                             |
-+-------------------------------------------------------------------------------------------------------+
-|                                                ColumnMeta                                             |
-+-------------------------------------------------------------------------------------------------------+
-|                                                ..........                                             |
-+-------------------------------------------------------------------------------------------------------+
-Header Size = 64B
++----------------------------------------------------------------------------------------------------+
+|                                              Header                                                |
++-------------+---------------+-------------+-----------------+------------------+-------------------+
+| TableID(8B) | SegmentID(8B) | BlockID(4B) |   ColumnCnt(2B) | ExistZonemap(1B) |  Reserved(41B)    |
++-------------+---------------+-------------+-----------------+------------------+-------------------+
+|                                             ColumnMeta                                             |
++----------------------------------------------------------------------------------------------------+
+|                                             ColumnMeta                                             |
++----------------------------------------------------------------------------------------------------+
+|                                             ColumnMeta                                             |
++----------------------------------------------------------------------------------------------------+
+|                                             ..........                                             |
++----------------------------------------------------------------------------------------------------+
+
+BlockMetaHeader Size = 64B
 TableID = Table ID for Block
 SegmentID = Segment ID
 BlockID = Block ID
-Algo = Type of compression algorithm for block data
 ColumnCnt = The number of column in the block
-Chksum = Block metadata checksum
+ExistZonemap = Whether each column in the block has a zonemap
 Reserved = 41 bytes reserved space
 ```
 ##### Column Meta
 ```
-+---------------------------------------------------------------------------------------------------------------+
-|                                                    ColumnMeta                                                 |
-+--------+-------+----------+--------+---------+--------+--------+------------+---------+-----------+-----------+
-|Type(1B)|Idx(2B)|Offset(4B)|Size(4B)|oSize(4B)|Min(32B)|Max(32B)|BFoffset(4b)|BFlen(4b)|BFoSize(4B)|Chksum(4B) |
-+--------+-------+----------+--------+---------+--------+--------+------------+---------+-----------+-----------+
-|                                                    Reserved(33B)                                              |
-+---------------------------------------------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+|                                       ColumnMeta                                        |
++--------+--------+--------+----------------+----------+----------------------+-----------+
+|Type(1B)|Algo(1B)| Idx(2B)| DataExtent(12B)|Chksum(4B)| BloomFilteExtent(12B)|Chksum(4B) |
++--------+--------+--------+----------------+----------+----------------------+-----------+
+|                                      Reserved(28B)                                      |
++-----------------------------------------------------------------------------------------+
 ColumnMeta Size = 128B
-Type = Metadata type, always 0, representing column meta, used for extension.
+Type = The data type of the Column
 Idx = Column index
-Offset = Offset of column data
-Size = Size of column data
-oSize = Original data size
-Min = Column min value
-Max = Column Max value
+DataExtent = Exten of Column Data
+Chksum = Column Data checksum
+
 BFoffset = Bloomfilter data offset
 Bflen = Bloomfilter data size
 BFoSize = Bloomfilter original data size
 Chksum = Data checksum
-Reserved = 33 bytes reserved space
+Reserved = 28 bytes reserved space
 ```
 ##### Foot
 ```
-+------------+------------+-------------+----+--------------+----------------+------------+
-| <Extent-1> | <Extent-2> |  <Extent-3> |....| MetaAlgo(1B) | ExtentsSize(4B)| Magic (8B) |
-+------------+------------+-------------+----+--------------+----------------+------------+
-        |
-        |
-+----------------+--------------+-----------------+
-| MetaOffset(4B) | MetaSize(4B) |  MetaOSize (4B) |
-+----------------+--------------+-----------------+
++----------+----------------+----------+-----------+----------+
+|Chksum(4B)| MetaExtent(12B)| Algo(1B) |Version(2B)| Magic(8B)|
++----------+----------------+----------+-----------+----------+
 Magic = Engine identity (0x01346616). TAE only
-ExtentsSize = The size of the meta extents area in the foot.
-MetaAlgo = Type of compression algorithm for block metadata
+Version = Object file version
+Algo = Compression algorithm type for Metadata
+MetaExtent = Extent of Metadata
+Chksum = Metadata checksum
 ```
-##### Extent
-```
-An extent records the address of a block's metadata in the object
-MetaOffset = Offset of block metadata
-MetaSize = Size of block metadata
-MetaOSize = Original metadata size
-```
+
 ### IO Path
 ##### Read block
 ```
           +-------------------+
-          |      MetaInfo     |
+          |     MetaLoction   |
           +-------------------+                   
                     |
                     |
 +--------------------------------------------------------------------+
 |                             IO Entry                               |
 +--------------------------------------------------------------------+
-|                             BlockMeta                              |
+|        Meta(ObjectMeta/BlockMetaHeader/ColumnMeta/ZoneMap)         |
 +--------+----------------+----------------+----------------+--------+
-| Header | <ColumnMeta-1> | <ColumnMeta-2> | <ColumnMeta-3> | ...... |
+| Block  | <ColumnMeta-1> | <ColumnMeta-2> | <ColumnMeta-3> | ...... |
 +--------+----------------+----------------+----------------+--------+
                   |               |               |
                   |               |               |
@@ -114,28 +154,19 @@ MetaOSize = Original metadata size
 ```
 ##### Read object
 ```
-          +-------------------------------+
-          |             Foot              |
-          +----------+-------------+------+  
-          | MetaAlgo | ExtentsSize | Magic|
-          +----------+-------------+------+
+          +-----------------------------+
+          |            Header           |
+          +--------+-------------+------+  
+          | ...... | MetaExtent  |......|
+          +--------+-------------+------+
                           |
                           |
-+------------------------------------------------------------+
-|                         IO Entry                           |
-+------------------------------------------------------------+
-|                         Extent Area                        |
-+------------+------------+------------+------------+--------+
-| <Extent-1> | <Extent-2> | <Extent-3> | <Extent-4> | ...... |
-+------------+------------+------------+------------+--------+
-        |
-        |
 +--------------------------------------------------------------------+
 |                             IO Entry                               |
 +--------------------------------------------------------------------+
-|                             BlockMeta                              |
+|        Meta(ObjectMeta/BlockMetaHeader/ColumnMeta/ZoneMap)         |
 +--------+----------------+----------------+----------------+--------+
-| Header | <ColumnMeta-1> | <ColumnMeta-2> | <ColumnMeta-3> | ...... |
+| Block  | <ColumnMeta-1> | <ColumnMeta-2> | <ColumnMeta-3> | ...... |
 +--------+----------------+----------------+----------------+--------+
                   |               |               |
                   |               |               |
