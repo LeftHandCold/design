@@ -1,15 +1,19 @@
 # Layout Reference
-- Design
-    - [Format](layout.md#format)
-        - [Type](layout.md#type)
-        - [Extent](layout.md#extent)
-        - [Header](layout.md#header)
-        - [Metadata Area](layout.md#metadata-area)
-            - [Object Meta](layout.md#object-meta)
-            - [Block Meta](layout.md#block-meta-header)
-    - [IO Path](layout.md#io-path)
-      - [Block](layout.md#read-block)
-      - [Object](layout.md#read-block)
+- [Format](layout.md#format)
+  - [Type](layout.md#type)
+  - [Extent](layout.md#extent)
+  - [Header](layout.md#header)
+  - [Metadata Area](layout.md#metadata-area)
+  - [Object Meta](layout.md#object-meta)
+  - [Block Meta](layout.md#block-meta-header)
+- [Data Structure](layout.md#data-structure)
+  - [Appendable Block](layout.md#appendable-block)
+- [Index Structure](layout.md#index-structure)
+  - [Zone Map](layout.md#zone-map)
+  - [Bloom Filter](layout.md#bloom-filter)
+- [IO Path](layout.md#io-path)
+  - [Block](layout.md#read-block)
+  - [Object](layout.md#read-block)
 ##  Format
 ### Storage File Format
 ![Layout.jpg](image/Layout.jpg)
@@ -94,7 +98,7 @@ Reserved = 21 bytes reserved space
 |                                     <Block Zonemap Area>                                     |
 +----------------------------------------------------------------------------------------------+
 ```
-###### Object Meta
+##### Object Meta
 An object can only have one ObjectMeta item
 ```
 +--------------+---------+---------+------------+--------------+-------------+--------+
@@ -125,7 +129,7 @@ NullCnt = How many Null values in the column
 Zonemap = Contains tow 32B values: min and max
 
 ```
-###### Block Meta Header
+##### Block Meta Header
 ```
 +---------------+---------------+----------------+----+----------------------+
 | <BlockMeta-1> | <BlockMeta-2> |  <BlockMeta-3> |....| <Block Zonemap Area> |
@@ -155,7 +159,7 @@ ColumnCnt = The number of column in the block
 ExistZM = Whether to write zonemap
 BfColCount = The count of bloomfilter in the block
 ```
-###### Column Meta
+##### Column Meta
 ```
 +--------------------------------------------------------------------------+
 |                              DataColumnMeta                              |
@@ -182,7 +186,7 @@ Idx = Column index
 DataExtent = Exten of Bloomfilter Data
 Chksum = Bloomfilter Data checksum
 ```
-###### Foot
+##### Foot
 ```
 +----------+----------------+-----------+----------+
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
@@ -192,10 +196,14 @@ Version = Object file version
 MetaExtent = Extent of Metadata
 Chksum = Metadata checksum
 ```
-### Data Area
-##### Appendable Block
+## Data Structure
+### Appendable Block
 ```
 ```
+
+## Index Structure
+### Zone Map
+### Bloom Filter
 
 ## IO Path
 #### Read block
