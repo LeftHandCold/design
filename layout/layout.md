@@ -1,64 +1,25 @@
 # Layout Reference
-
-## Storage File Format
-
+- Design
+    - [Format](layout.md#format)
+        - [Type](layout.md#type)
+        - [Extent](layout.md#extent)
+        - [Header](layout.md#header)
+        - [Metadata Area](layout.md#metadata area)
+            - [Object Meta](layout.md#object meta)
+            - [Block Meta](layout.md#block meta header)
+    - [IO Path](layout.md#io path)
+      - [Block](layout.md#read block)
+      - [Object](layout.md#read block)
+##  Format
+### Storage File Format
 ![Layout.jpg](image/Layout.jpg)
-
-## Protos
-
-### Extent
-
-```
-+------------+----------+-------------+-------------+
-| Offset(4B) | Size(4B) |  OSize (4B) |  Algo (1B)  |
-+------------+----------+-------------+-------------+
-
-Extent Size = 12B
-An extent records the address of a data/meta unit in the object
-Offset = Offset of Metadata/ColumnData/BloomFilter
-Size = Size of Metadata/ColumnData/BloomFilter
-oSize = Original Metadata/ColumnData/BloomFilter size
-Algo = Compression algorithm type for Data
-```
-
-### Header
-```
-+---------+------------+---------------+-----------+--------------+
-|Magic(8B)| Version(2B)|MetaExtent(13B)| Chksum(4B)| Reserved(21B)|
-+---------+------------+---------------+-----------+--------------+
-
-Header Size = 64B
-Magic = Engine identity (0x01346616). TAE only
-Version = Object file version
-MetaExtent = Extent of Metadata
-Chksum = Metadata checksum
-Reserved = 21 bytes reserved space
-```
-### Metadata Area
-
-```
-+----------------------------------------------------------------------------------------------+
-|                                         <Object Meta>                                        |
-+----------------------------------------------------------------------------------------------+
-|                                         <BlockMeta-1>                                        |
-+----------------------------------------------------------------------------------------------+
-|                                         <BlockMeta-2>                                        |
-+----------------------------------------------------------------------------------------------+
-|                                          ..........                                          |
-+----------------------------------------------------------------------------------------------+
-|                                     <Block Zonemap Area>                                     |
-+----------------------------------------------------------------------------------------------+
-
-
-```
-
 ##### Type
 ```
 +---------------+
 |   MetaType    |
 +---------------+
 | * ObjectMeta  |
-| * BlockBatch  |
+| * BlockMeta   |
 | * ColumnData  |
 | * BloomFilter |
 | * ZoneMap     |
@@ -66,7 +27,7 @@ Reserved = 21 bytes reserved space
 
 MetaType:       Meta enumeration type
 ObjectMeta    = Object metadata
-BlockBatch    = Block metadata (a batch is a block)
+BlockMeta     = Block metadata (a batch is one block)
 ColumnData    = Column data metadata
 BloomFilter   = Bloomfilter metadata
 ZoneMap       = Zonemap metadata
@@ -90,7 +51,50 @@ ETL           = ETL data
 QueryResult   = Cache data of frontend query results
 ```
 
-##### Object Meta
+#### Extent
+
+```
++------------+----------+-------------+-------------+
+| Offset(4B) | Size(4B) |  OSize (4B) |  Algo (1B)  |
++------------+----------+-------------+-------------+
+
+Extent Size = 13B
+An extent records the address of a data/meta unit in the object
+Offset = Offset of Metadata/ColumnData/BloomFilter
+Size = Size of Metadata/ColumnData/BloomFilter
+oSize = Original Metadata/ColumnData/BloomFilter size
+Algo = Compression algorithm type for Data
+```
+
+#### Header
+```
++---------+------------+---------------+-----------+--------------+
+|Magic(8B)| Version(2B)|MetaExtent(13B)| Chksum(4B)| Reserved(21B)|
++---------+------------+---------------+-----------+--------------+
+
+Header Size = 64B
+Magic = Engine identity (0x01346616). TAE only
+Version = Object file version
+MetaExtent = Extent of Metadata
+Chksum = Metadata checksum
+Reserved = 21 bytes reserved space
+```
+#### Metadata Area
+
+```
++----------------------------------------------------------------------------------------------+
+|                                         <Object Meta>                                        |
++----------------------------------------------------------------------------------------------+
+|                                         <BlockMeta-1>                                        |
++----------------------------------------------------------------------------------------------+
+|                                         <BlockMeta-2>                                        |
++----------------------------------------------------------------------------------------------+
+|                                          ..........                                          |
++----------------------------------------------------------------------------------------------+
+|                                     <Block Zonemap Area>                                     |
++----------------------------------------------------------------------------------------------+
+```
+###### Object Meta
 An object can only have one ObjectMeta item
 ```
 +--------------+---------+---------+------------+--------------+-------------+--------+
@@ -121,7 +125,7 @@ NullCnt = How many Null values in the column
 Zonemap = Contains tow 32B values: min and max
 
 ```
-##### Block Meta Header
+###### Block Meta Header
 ```
 +---------------+---------------+----------------+----+----------------------+
 | <BlockMeta-1> | <BlockMeta-2> |  <BlockMeta-3> |....| <Block Zonemap Area> |
@@ -151,7 +155,7 @@ ColumnCnt = The number of column in the block
 ExistZM = Whether to write zonemap
 BfColCount = The count of bloomfilter in the block
 ```
-##### Column Meta
+###### Column Meta
 ```
 +--------------------------------------------------------------------------+
 |                              DataColumnMeta                              |
@@ -178,7 +182,7 @@ Idx = Column index
 DataExtent = Exten of Bloomfilter Data
 Chksum = Bloomfilter Data checksum
 ```
-##### Foot
+###### Foot
 ```
 +----------+----------------+-----------+----------+
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
@@ -188,9 +192,13 @@ Version = Object file version
 MetaExtent = Extent of Metadata
 Chksum = Metadata checksum
 ```
+### Data Area
+##### Appendable Block
+```
+```
 
-### IO Path
-##### Read block
+## IO Path
+#### Read block
 ```
           +-------------------+
           |     MetaLoction   |
@@ -212,7 +220,7 @@ Chksum = Metadata checksum
             |ColumnData|    |ColumnData|    |ColumnData|
             +----------+    +----------+    +----------+
 ```
-##### Read object
+#### Read object
 ```
           +-----------------------------+
           |            Header           |
