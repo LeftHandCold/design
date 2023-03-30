@@ -191,20 +191,57 @@ Chksum = Bloomfilter Data checksum
 +----------+----------------+-----------+----------+
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
+
 Magic = Engine identity (0x01346616). TAE only
 Version = Object file version
 MetaExtent = Extent of Metadata
 Chksum = Metadata checksum
 ```
 ## Data Structure
-### Appendable Block
-```
-```
+The Data area is composed of batches. 
 
+Writing a batch means adding a block to the object, 
+and the BlockID is generated in the order of writing.
+### Appendable Block
+#### Schema
+```
++------------------+-------------+------------+
+|Col1|Col2|Col3|...|   CommitTs  |  Aborted   |
++------------------+-------------+------------+
+|        ...       |   Type.TS   |types.T_bool|
++------------------+-------------+------------+
+
+Col1/Col2/Col3... = Original table column
+CommitTs          = Commit timestamp
+Aborted           = Whether to be aborted
+```
+### Delete Block
+#### Schema
+```
++------------------+-------------+------------+
+|      RowID       |   CommitTs  |  Aborted   |
++------------------+-------------+------------+
+|  Type.T_Rowid    |  Type.T_TS  |types.T_bool|
++------------------+-------------+------------+
+
+RowID             = ID of the deleted row
+CommitTs          = The commit timestamp of the delete operation
+Aborted           = Whether the delete operation was aborted
+```
 ## Index Structure
 ### Zone Map
-### Bloom Filter
+```
++--------------+-------------+-------+------+
+|      min     |     max     | flags | type |
++--------------+-------------+-------+------+
+|         0,1,2,3......      |   62  |  63  |
++--------------+-------------+-------+------+
 
+Zonemap Length  =  64 bytes
+```
+### Bloom Filter
+```
+```
 ## IO Path
 #### Read block
 ```
