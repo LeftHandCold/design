@@ -4,12 +4,12 @@
         - [Type](layout.md#type)
         - [Extent](layout.md#extent)
         - [Header](layout.md#header)
-        - [Metadata Area](layout.md#metadata area)
-            - [Object Meta](layout.md#object meta)
-            - [Block Meta](layout.md#block meta header)
-    - [IO Path](layout.md#io path)
-      - [Block](layout.md#read block)
-      - [Object](layout.md#read block)
+        - [Metadata Area](layout.md#metadata-area)
+            - [Object Meta](layout.md#object-meta)
+            - [Block Meta](layout.md#block-meta-header)
+    - [IO Path](layout.md#io-path)
+      - [Block](layout.md#read-block)
+      - [Object](layout.md#read-block)
 ##  Format
 ### Storage File Format
 ![Layout.jpg](image/Layout.jpg)
