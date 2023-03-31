@@ -25,7 +25,6 @@
 | * ObjectMeta  |
 | * BlockMeta   |
 | * ColumnData  |
-| * BloomFilter |
 | * ZoneMap     |
 +---------------+
 
@@ -33,7 +32,6 @@ MetaType:       Meta enumeration type
 ObjectMeta    = Object metadata
 BlockMeta     = Block metadata (a batch is one block)
 ColumnData    = Column data metadata
-BloomFilter   = Bloomfilter metadata
 ZoneMap       = Zonemap metadata
 
 +---------------+
@@ -138,9 +136,9 @@ Zonemap = Contains tow 32B values: min and max
        |
 +----------------------------------------------------------------------------------------------------+
 |                                              Header                                                |
-+------------+--------+-----------+-----------+-------------+-----------+--------------+-------------+
-|MetaType(1B)|Type(8B)|Version(8B)|BlockID(4B)|ColumnCnt(2B)|ExistZM(1B)|BfColCount(2B)|Reserved(19B)|
-+------------+--------+-----------+-----------+-------------+-----------+--------------+-------------+
++------------+--------+-----------+-----------+-------------+-----------+----------------------------+
+|MetaType(1B)|Type(1B)|Version(2B)|BlockID(4B)|ColumnCnt(2B)|ExistZM(1B)|        Reserved(21B)       |
++------------+--------+-----------+-----------+-------------+-----------+----------------------------+
 |                                             ColumnMeta                                             |
 +----------------------------------------------------------------------------------------------------+
 |                                             ColumnMeta                                             |
@@ -150,47 +148,36 @@ Zonemap = Contains tow 32B values: min and max
 |                                             ..........                                             |
 +----------------------------------------------------------------------------------------------------+
 
-BlockMetaHeader Size = 64B
+BlockMetaHeader Size = 32B
 MetaType = 01
 Type = Object enumeration type
 Version = version of block data(vector)
 BlockID = Block id
 ColumnCnt = The number of column in the block
 ExistZM = Whether to write zonemap
-BfColCount = The count of bloomfilter in the block
 ```
 ##### Column Meta
 ```
-+--------------------------------------------------------------------------+
-|                              DataColumnMeta                              |
-+-------------+--------+--------+----------------+----------+--------------+
-|MetaType(1B) |Type(1B)| Idx(2B)| DataExtent(12B)|Chksum(4B)| Reserved(11B)|
-+-------------+--------+--------+----------------+----------+--------------+
++------------------------------------------------------------------------------------------------------+
+|                                            DataColumnMeta                                            |
++-------------+--------+--------+----------------+----------+----------------+----------+--------------+
+|MetaType(1B) |Type(1B)| Idx(2B)| DataExtent(13B)|Chksum(4B)|  BFExtent(13B) |Chksum(4B)| Reserved(26B)|
++-------------+--------+--------+----------------+----------+----------------+----------+--------------+
 
-ColumnMeta Size = 128B
+ColumnMeta Size = 64B
 MetaType = 02
 Type = The data type of the Column
 Idx = Column index
 DataExtent = Exten of Column Data
 Chksum = Column Data checksum
-
-+-----------------------------------------------------------------------------+
-|                                BloomFilterMeta                              |
-+-------------+-----------+--------+----------------+----------+--------------+
-|MetaType(1B) |Version(1B)| Idx(2B)| DataExtent(12B)|Chksum(4B)| Reserved(11B)|
-+-------------+-----------+--------+----------------+----------+--------------+
-
-MetaType = 03
-Version = Bloomfilter version
-Idx = Column index
-DataExtent = Exten of Bloomfilter Data
-Chksum = Bloomfilter Data checksum
+BFExtent = Exten of BloomFilter
 ```
 ##### Foot
 ```
 +----------+----------------+-----------+----------+
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
+
 Magic = Engine identity (0x01346616). TAE only
 Version = Object file version
 MetaExtent = Extent of Metadata
