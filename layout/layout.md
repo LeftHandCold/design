@@ -10,7 +10,6 @@
   - [Appendable Block](layout.md#appendable-block)
 - [Index Structure](layout.md#index-structure)
   - [Zone Map](layout.md#zone-map)
-  - [Bloom Filter](layout.md#bloom-filter)
 - [IO Path](layout.md#io-path)
   - [Block](layout.md#read-block)
   - [Object](layout.md#read-block)
@@ -75,7 +74,7 @@ Algo = Compression algorithm type for Data
 +---------+------------+---------------+-----------+--------------+
 
 Header Size = 64B
-Magic = Engine identity (0x01346616). TAE only
+Magic = Engine identity (0xFFFFFFFF)
 Version = Object file version
 MetaExtent = Extent of Metadata
 Chksum = Metadata checksum
@@ -178,7 +177,7 @@ BFExtent = Exten of BloomFilter
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
 
-Magic = Engine identity (0x01346616). TAE only
+Magic = Engine identity (0x0xFFFFFFFF)
 Version = Object file version
 MetaExtent = Extent of Metadata
 Chksum = Metadata checksum
@@ -224,9 +223,6 @@ Aborted           = Whether the delete operation was aborted
 +--------------+-------------+-------+------+
 
 Zonemap Length  =  64 bytes
-```
-### Bloom Filter
-```
 ```
 ## IO Path
 #### Read block
