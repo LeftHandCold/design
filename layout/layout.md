@@ -6,6 +6,7 @@
   - [Metadata Area](layout.md#metadata-area)
   - [Object Meta](layout.md#object-meta)
   - [Block Meta](layout.md#block-meta-header)
+- [File Name Rules](layout.md#file-name-rules)
 - [Data Structure](layout.md#data-structure)
   - [Appendable Block](layout.md#appendable-block)
   - [Delete Block](layout.md#delete-block)
@@ -99,11 +100,11 @@ Reserved = 21 bytes reserved space
 ##### Object Meta
 An object can only have one ObjectMeta item
 ```
-+--------------+---------+---------+------------+--------------+-------------+--------+
-| MetaType(1B) | Type(1B)| DBID(8B)| TableID(8B)| SegmentID(4B)|AccountID(4B)|Rows(4B)|
-+--------------+-------------------+---------------------------+-------------+--------+
-| ColumnCnt(2B)| BlkMetaExtent(13B)|    ZmMetaExtent(13B)      |      Resered(24B)    |
-+--------------+-------------------+---------------------------+----------------------+
++--------------+---------+---------+------------+-----------------+-------------+--------+
+| MetaType(1B) | Type(1B)| DBID(8B)| TableID(8B)| SegmentID(16B)  |AccountID(4B)|Num(2B) |
++--------------+---------+----------------------+-----------------+----------------------+
+| ColumnCnt(2B)| Rows(4B)|  BlkMetaLength(4B)   | ZmMetaLength(4B)|    Resered(32B)      |
++--------------+---------+----------------------+-----------------+----------------------+
 | <Col1>|<Col2>|<Col3>|<Col4>|<Col5>|<Col6>|...
                           |
                           |
@@ -117,6 +118,7 @@ DBID = Database id
 TableID = Table id
 SegmentID = Segment id
 AccountID = Account id
+Num = File number
 Rows = How many rows are contained in object
 ColumnCnt = The number of column in the object zonemap
 BlkMetaExtent = Extent of block metada
@@ -183,6 +185,18 @@ Version = Object file version
 MetaExtent = Extent of Metadata
 Chksum = Metadata checksum
 ```
+
+## File Name Rules
+```
+<SegmentID>-<FileName>
+
++------------------------------------+-------------+
+|            <SegmentID>             |   FileNum   |
++------------------------------------+-------------+
+|731f001d-55df-4f66-8ef7-10506b5bb4b3-0            |
++--------------------------------------------------+
+```
+
 ## Data Structure
 The Data area is composed of batches. 
 
