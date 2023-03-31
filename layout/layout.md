@@ -8,6 +8,7 @@
   - [Block Meta](layout.md#block-meta-header)
 - [Data Structure](layout.md#data-structure)
   - [Appendable Block](layout.md#appendable-block)
+  - [Delete Block](layout.md#delete-block)
 - [Index Structure](layout.md#index-structure)
   - [Zone Map](layout.md#zone-map)
 - [IO Path](layout.md#io-path)
