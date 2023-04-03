@@ -324,7 +324,7 @@ Zonemap Length  =  64 bytes
 #### Prefetch context
 ```
 // Build the context of a prefetch request
-BuildPrefetch(info []catalog.BlockInfo, m *mpool.MPool) prefetch
+BuildPrefetch(info []catalog.BlockInfo) prefetch
 
 // Add a read block request to the prefetch context
 AddBlock(idxes []uint16, ids []uint32)
@@ -336,9 +336,9 @@ AddBlock(idxes []uint16, ids []uint32)
 PrefetchWithMerged(pref prefetch) error
 
 // Simple prefetch a block
-Prefetch(idxes []uint16,ids []uint32, info []catalog.BlockInfo, m *mpool.MPool) error
+Prefetch(idxes []uint16,ids []uint32, info []catalog.BlockInfo) error
 
-PrefetchMeta(info []catalog.BlockInfo, m *mpool.MPool) error
+PrefetchMeta(info []catalog.BlockInfo) error
 ```
 
 #### Prefetch case
@@ -346,7 +346,7 @@ PrefetchMeta(info []catalog.BlockInfo, m *mpool.MPool) error
 
 case 1:
 // Build prefetch context
-pref := BuildPrefetch(info, mpool)
+pref := BuildPrefetch(info)
 idxes := []uint16{0, 2, 4}
 ids1 := []uint32{0, 2}
 pref.AddBlock(idxes, ids1)
@@ -359,11 +359,11 @@ err := PrefetchWithMerged(pref)
 case 2:
 idxes1 := []uint16{0, 2, 4}
 ids1 := []uint32{0, 2}
-err = Prefetch(idxes1, ids1, info, mpool)
+err = Prefetch(idxes1, ids1, info)
 
 idxes2 := []uint16{1, 2}
 ids2 := []uint32{1, 3}
-err = Prefetch(idxes2, ids2, info, mpool)
+err = Prefetch(idxes2, ids2, info)
 ```
 ##### before
 ![before.png](image/before.png)
