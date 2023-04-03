@@ -305,6 +305,8 @@ PrefetchWithMerged(pref prefetch) error
 
 // Simple prefetch a block
 Prefetch(idxes []uint16,ids []uint32, reader dataio.Reader, m *mpool.MPool) error
+
+PrefetchMeta(reader dataio.Reader, m *mpool.MPool) error
 ```
 
 #### Prefetch case
