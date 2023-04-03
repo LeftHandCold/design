@@ -15,6 +15,7 @@
 - [IO Path](layout.md#io-path)
   - [Block](layout.md#read-block)
   - [Object](layout.md#read-block)
+- [Prefetch](layout.md#prefetch)
 ##  Format
 ### Storage File Format
 ![Layout.jpg](image/Layout.jpg)
@@ -267,14 +268,12 @@ Zonemap Length  =  64 bytes
 #### Read object
 ```
           +-----------------------------+
-          |            Header           |
-          +--------+-------------+------+  
-          | ...... | MetaExtent  |......|
-          +--------+-------------+------+
+          |           IO Entry          |
+          +-----------------------------+  
                           |
                           |
 +--------------------------------------------------------------------+
-|                             IO Entry                               |
+|                       Header & MetaExtent                          |
 +--------------------------------------------------------------------+
 |        Meta(ObjectMeta/BlockMetaHeader/ColumnMeta/ZoneMap)         |
 +--------+----------------+----------------+----------------+--------+
@@ -288,3 +287,52 @@ Zonemap Length  =  64 bytes
             |ColumnData|    |ColumnData|    |ColumnData|
             +----------+    +----------+    +----------+
 ```
+
+## Prefetch
+#### Prefetch context
+```
+// Build the context of a prefetch request
+BuildPrefetch(reader dataio.Reader, m *mpool.MPool) prefetch
+
+// Add a read block request to the prefetch context
+AddBlock(idxes []uint16, ids []uint32)
+
+```
+#### Prefetch interface
+```
+// The caller has merged the block information that needs to be prefetched
+PrefetchWithMerged(pref prefetch) error
+
+// Simple prefetch a block
+Prefetch(idxes []uint16,ids []uint32, reader dataio.Reader, m *mpool.MPool) error
+```
+
+#### Prefetch case
+```go
+reader, err := dataio.NewDataReader(fileservice, MetaLocation)
+
+case 1:
+// Build prefetch context
+pref := BuildPrefetch(reader, mpool)
+idxes := []uint16{0, 2, 4}
+ids1 := []uint32{0, 2}
+pref.AddBlock(idxes, ids1)
+ids2 := []uint32{1, 3}
+pref.AddBlock(idxes, ids2)
+
+// Exec prefetch
+err := PrefetchWithMerged(pref)
+
+case 2:
+idxes1 := []uint16{0, 2, 4}
+ids1 := []uint32{0, 2}
+err = Prefetch(idxes1, ids1, reader, mpool)
+
+idxes2 := []uint16{1, 2}
+ids2 := []uint32{1, 3}
+err = Prefetch(idxes2, ids2, reader, mpool)
+```
+##### before
+![before.png](image/before.png)
+##### after
+![after.png](image/after.png)
