@@ -10,7 +10,7 @@ MatrixOne从0.5设计开始就已经确定采用列存结构来存储数据集�
 典型的OLTP数据库如PostgreSQL就是基于HEAP来做的存储引擎。假如每个列都是独立的Column Family，
 也就是每一列都独立存放，那么就是典型的列存。通过定义Column Family，用户可以方便地在行存和列存之间切换，这只需要在DDL表定义中指定即可。
 ```
-![Format.jpg](image/Format.jpg)
+![format.jpg](image/format.jpg)
 
 ### Part 1 Layout需要满足的条件和解决了什么问题
 设计一种Layout，首先要提出一个疑问。
