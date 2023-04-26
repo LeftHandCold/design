@@ -10,7 +10,6 @@ MatrixOne从0.5设计开始就已经确定采用列存结构来存储数据集�
 典型的OLTP数据库如PostgreSQL就是基于HEAP来做的存储引擎。假如每个列都是独立的Column Family，
 也就是每一列都独立存放，那么就是典型的列存。通过定义Column Family，用户可以方便地在行存和列存之间切换，这只需要在DDL表定义中指定即可。
 ```
-![format.jpg](image/format.jpg)
 
 ### Part 1 Layout需要满足的条件和解决了什么问题
 设计一种Layout，首先要提出一个疑问。
@@ -34,8 +33,9 @@ MatrixOne需对接S3或共享对象存储，每一个对象需要存储指定行
 ```go
 功能4：支持从数据对象文件中重建MatrixOne的表结构
 ```
-根据以上需求我们得出现有的Layout结构
-![Layout.jpg](image/Layout.jpg)
+
+![format.jpg](image/format.jpg)
+根据上诉几个问题，我们设计了现在的Layout，它由Header、数据区、索引区、元数据区和Footer组成。
 
 ### Part 2 解析这些结构
 #### Extent
@@ -50,8 +50,8 @@ Size = IOEntry存储在对象中的大小
 oSize = IOEntry压缩前的原始大小
 Algo = 压缩算法类型
 ```
-#### BlockMeta
 #### ObjectMeta
+![meta.jpg](image/meta.jpg)
 为什么我们先介绍ObjectMeta而不是Header，因为MatrixOne的查询业务是从ObjectMeta开始的。
 MatrixOne向S3写入数据成功后，会拿到一个记录ObjectMeta位置的Extent，并保存到Catalog中。
 当MatrixOne执行查询操作需要读取数据时，可以通过这个Extent拿到ObjectMeta，从而拿到Block的真实数据。
@@ -64,20 +64,7 @@ BlockIndex记录后面每一个BlockMeta的地址。ObjectMeta在MatrixOne系统
 
 BlockMeta记录了每一个Block的元数据信息。
 
-```
-+----------------------------------------------------------------------------------------------+
-|                                         <MetaHeader>                                         |
-+----------------------------------------------------------------------------------------------+
-|                                         <BlockIndex>                                         |
-+----------------------------------------------------------------------------------------------+
-|                                         <BlockMeta-1>                                        |
-+----------------------------------------------------------------------------------------------+
-|                                         <BlockMeta-2>                                        |
-+----------------------------------------------------------------------------------------------+
-|                                          ..........                                          |
-+----------------------------------------------------------------------------------------------+
-```
-#### BlockMeta
+#### BlockMeta&MetaHeader
 BlockMeta由一个Header和多个ColumnMeta组成。
 
 Header记录了BlockID、Block的Rows、Column Count等信息。
@@ -87,11 +74,11 @@ ColumnMeta记录了每一列的数据地址、Null Count（当前列Null值的�
 ```
 +----------------------------------------------------------------------------------------------------+
 |                                              Header                                                |
-+--------------+---------+-------------+------------+--------------+--------------+------------------+
-| MetaType(1B) | Type(1B)| Version(2B) |  DBID(8B)  | TableID(8B)  |SegmentID(16B)|   AccountID(4B)  |
-+--------------+---------+-------------+------------+--------------+---------------------------------+
-|    Num(2B)   | Rows(4B)|ColumnCnt(2B)| BlockID(4B)| ExistZM(1B)  |           Reserved(39B)         |
-+--------------+---------+-------------+------------+--------------+---------------------------------+
++----------+------------+-------------+-------------+------------+--------------+--------------------+
+| DBID(8B) | TableID(8B)|AccountID(4B)|BlockID(20B) |  Rows(4B)  | ColumnCnt(2B)| BloomFilter(13B)   |
++----------+------------+-------------+-------------+------------+--------------+--------------------+
+|                                            Reserved(37B)                                           |
++----------------------------------------------------------------------------------------------------+
 |                                             ColumnMeta                                             |
 +----------------------------------------------------------------------------------------------------+
 |                                             ColumnMeta                                             |
@@ -101,78 +88,34 @@ ColumnMeta记录了每一列的数据地址、Null Count（当前列Null值的�
 |                                             ..........                                             |
 +----------------------------------------------------------------------------------------------------+
 
-BlockMetaHeader Size = 92B (=ObjectMetaHeader size)
-MetaType = 01
-Type = Object enumeration type
-Version = version of block data(vector)
 DBID = Database id
 TableID = Table id
-SegmentID = Segment id
 AccountID = Account id
-Num = File number
-Rows = How many rows are contained in object
-ColumnCnt = The number of column in the block
-BlockID = Block id
-ExistZM = Whether to write zonemap
+BlockID = Block id。
+Rows = MetaHeader中为对象的行数，BlockMeta中为当前Block的行数
+ColumnCnt = 在对象或Block中有多少列
+BloomFilter = 存储BloomFilter区域的地址，只在MetaHeader中有效
 ```
 ##### Column Meta
 ```
 +--------------------------------------------------------------------------------+
-|                                  DataColumnMeta                                |
-+-------------+----------+-------+-------+-----------+---------------+-----------+
-|MetaType(1B) |Type(1B)  |Idx(2B)|Ndv(4B)|NullCnt(4B)|DataExtent(13B)|Chksum(4B) |    
-+-------------+----------+-------+-------+-----------+---------------+-----------+
-|BFExtent(13B)|Chksum(4B)|                     Reserved(18B)                     |
-+-------------+----------+-------+-------+-----------+---------------+-----------+
+|                                    ColumnMeta                                  |
++--------+---------+-------+-----------+---------------+-----------+-------------+
+|Idx(2B) |Type(1B) |Ndv(4B)|NullCnt(4B)|DataExtent(13B)|Chksum(4B) |ZoneMap(64B) |   
++--------+---------+-------+-----------+---------------+-----------+-------------+
+|                                   Reserved(32B)                                |
++--------------------------------------------------------------------------------+
 
-ColumnMeta Size = 64B
-MetaType = 02
-Type = The data type of the Column
-Idx = Column index
-Ndv = How many distinct values in the column
-NullCnt = How many Null values in the column
-DataExtent = Exten of Column Data
-Chksum = Column Data checksum
-BFExtent = Exten of BloomFilter
+Idx = Column的序号
+Ndv = Column中有多少不同的值
+NullCnt = Column中有多少Null值
+DataExtent = Column数据的位置
+Chksum = Column数据的checksum
+ZoneMap = Column的ZoneMap，大小固定为64B
 ```
 
-##### Type
-```
-+---------------+
-|   MetaType    |
-+---------------+
-| * ObjectMeta  |
-| * BlockMeta   |
-| * ColumnData  |
-| * ZoneMap     |
-+---------------+
-
-MetaType:       Meta enumeration type
-ObjectMeta    = Object metadata
-BlockMeta     = Block metadata (a batch is one block)
-ColumnData    = Column data metadata
-ZoneMap       = Zonemap metadata
-
-+---------------+
-|  ObjectType   |
-|  (DataType)   |
-+---------------+
-| * Data        |
-| * Checkpoint  |
-| * GCMeta      |
-| * ETL         |
-| * QueryResult |
-+---------------+
-
-ObjectType:     Object enumeration type
-Data          = Database data
-Checkpoint    = Checkpoint data
-GCMeta        = Metadata of Disk cleaner
-ETL           = ETL data
-QueryResult   = Cache data of frontend query results
-```
 ##### Header
-Header和Foot记录信息一致，只不过位置不同。
+Header和Footer记录信息一致，只不过位置不同。
 ```
 +---------+------------+---------------+----------+
 |Magic(8B)| Version(2B)|MetaExtent(13B)|Chksum(4B)|
@@ -180,15 +123,75 @@ Header和Foot记录信息一致，只不过位置不同。
 
 Magic = Engine identity (0x0xFFFFFFFF)
 Version = 对象文件的版本号
-MetaExtent = ObjectMeta的Extent
+MetaExtent = ObjectMeta的位置信息
 Chksum = ObjectMeta的checksum
 ```
 
-##### Foot
+##### Footer
 ```
 +----------+----------------+-----------+----------+
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
+```
+### Part 3 版本兼容
+#### IOEntry
+IOEntry表示一个IO单元，具体对应在Layout中就是：ObjectMeta、每一个Column的数据、BloomFilter区还有Header和Footer。
+除了Header和Footer，我们需要在每一个IOEntry头添加两个flag：Type&Version。
+
+每一个结构或模块需要实现Encode/Decode函数，然后注册到MatrixOne中，MatrixOne读出IOEntry后会根据这两个flag来选择对应的代码。
+
+```go
+
+const (
+	IOET_ObjectMeta_V1  = 1
+	IOET_ColumnData_V1  = 1
+	IOET_BloomFilter_V1 = 1
+	...
+
+	IOET_ObjectMeta_CurrVer  = IOET_ObjectMeta_V1
+	IOET_ColumnData_CurrVer  = IOET_ColumnData_V1
+	IOET_BloomFilter_CurrVer = IOET_BloomFilter_V1
+)
+
+const (
+        IOET_Empty   = 0
+        IOET_ObjMeta = 1
+        IOET_ColData = 2
+        IOET_BF      = 3
+        ...
+)
+```
+以ObjectMeta为例。我们需注册V1的Encode/Decode函数代码，设置IOET_ObjectMeta_CurrVer为V1,并写入数据。
+```go
+func EncodeObjectMetaV1(meta *ObjectMeta) []byte {
+	...
+}
+func DecodeObjectMetaV1(buf []byte) *ObjectMeta {
+        ...
+}
+RegisterIOEnrtyCodec(IOET_ObjMeta,IOET_ObjectMeta_V1,EncodeObjectMetaV1,DecodeObjectMetaV1)
+ObjectMeta.Write(IOET_ObjMeta, IOET_ObjectMeta_CurrVer)
+```
+当系统运行了一段时间，也累积不少数据，我们需要修改当前ObjectMeta的结构。这时候需要增加一个版本IOET_ObjectMeta_V2。
+这样MatrixOne执行读操作时可以根据Type&Version来选择对应版本的Encode/Decode函数代码
+```go
+const (
+    IOET_ObjectMeta_V1  = 1
+    IOET_ObjectMeta_V2  = 2
+    ...
+
+    IOET_ObjectMeta_CurrVer  = IOET_ObjectMeta_V2
+    ...
+)
+
+func EncodeObjectMetaV2(meta *ObjectMeta) []byte {
+	...
+}
+func DecodeObjectMetaV2(buf []byte) *ObjectMeta {
+        ...
+}
+RegisterIOEnrtyCodec(IOET_ObjMeta,IOET_ObjectMeta_V2,EncodeObjectMetaV2,DecodeObjectMetaV2)
+ObjectMeta.Write(IOET_ObjMeta, IOET_ObjectMeta_CurrVer)
 ```
 ## IO Path
 #### Read block
@@ -201,29 +204,7 @@ Chksum = ObjectMeta的checksum
 +--------------------------------------------------------------------+
 |                             IO Entry                               |
 +--------------------------------------------------------------------+
-|        Meta(ObjectMeta/BlockMetaHeader/ColumnMeta/ZoneMap)         |
-+--------+----------------+----------------+----------------+--------+
-| Block  | <ColumnMeta-1> | <ColumnMeta-2> | <ColumnMeta-3> | ...... |
-+--------+----------------+----------------+----------------+--------+
-                  |               |               |
-                  |               |               |
-            +----------+    +----------+    +----------+
-            | IO Entry |    | IO Entry |    | IO Entry |  
-            +----------+    +----------+    +----------+
-            |ColumnData|    |ColumnData|    |ColumnData|
-            +----------+    +----------+    +----------+
-```
-#### Read object
-```
-          +-----------------------------+
-          |           IO Entry          |
-          +-----------------------------+  
-                          |
-                          |
-+--------------------------------------------------------------------+
-|                       Header & MetaExtent                          |
-+--------------------------------------------------------------------+
-|        Meta(ObjectMeta/BlockMetaHeader/ColumnMeta/ZoneMap)         |
+|      ObjectMeta(MetaHeader/BlockMetaHeader/ColumnMeta/ZoneMap)     |
 +--------+----------------+----------------+----------------+--------+
 | Block  | <ColumnMeta-1> | <ColumnMeta-2> | <ColumnMeta-3> | ...... |
 +--------+----------------+----------------+----------------+--------+
