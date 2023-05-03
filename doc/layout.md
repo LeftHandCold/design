@@ -52,8 +52,9 @@ Algo = 压缩算法类型
 ```
 #### ObjectMeta
 ![meta.jpg](image/meta.jpg)
+
 为什么我们先介绍ObjectMeta而不是Header，因为MatrixOne的查询业务是从ObjectMeta开始的。
-MatrixOne向S3写入数据成功后，会拿到一个记录ObjectMeta位置的Extent，并保存到Catalog中。
+MatrixOne向S3写入数据成功后，会返回一个记录ObjectMeta位置的Extent，并保存到Catalog中。
 当MatrixOne执行查询操作需要读取数据时，可以通过这个Extent拿到ObjectMeta，从而拿到Block的真实数据。
 
 ObjectMeta由多个BlockMeta、一个MetaHeader、一个BlockIndex组成。
@@ -133,7 +134,53 @@ Chksum = ObjectMeta的checksum
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
 ```
-## Part 3 版本兼容
+## Part 3 通过Extent读数据
+
+在介绍[ObjectMeta](layout.md#objectmeta)篇章时，我们知道，MatrixOne向S3写入数据成功后，
+会返回一个记录ObjectMeta位置的Extent。这里时候我们会通过Extent来执行读数据的操作。
+
+首先，通过Extent中的地址，向s3请求读一个IO Entry，并且放入MatrixOne的cache中。
+这个IO Entry就是ObjectMeta的全部内容。通过位移计算可以拿到BlockIndex，根据BlockIndex记录的Extent可以得到被读的
+BlockMeta，到吃为止我们元数据操作已经结束，剩下就是向s3请求读一个个Column Data了。
+```
+      +-----------+
+      |   Extent  |
+      +-----------+                   
+            |
+            |
++-------------------------+            
+|        IO Entry         |
++-------------------------+
+|       ObjectMeta        |
++-------------------------+
+            |
+            |
++---------------------------------------------------------------------
+|                            BlockIndex                              |
++--------+------------+------------+------------+-----------+--------+
+| Count  | <Extent-1> | <Extent-2> | <Extent-3> | Extent-4> | ...... |
++--------+------------+------------+------------+-----------+--------+
+               |                                       |
+               |                                       |
++------------------------------------------------+     |
+|             Block1(BlockMeta)                  |     |
++--------------+--------------+--------------+---+     |
+|<ColumnMeta-1>|<ColumnMeta-2>|<ColumnMeta-3>|...|     |
++--------------+--------------+--------------+---+     |   
+        |               |               |              | 
+        |               |               |       +------------------+
+  +----------+    +----------+    +----------+  | Block4(BlockMeta)|
+  | IO Entry |    | IO Entry |    | IO Entry |  +------------------+
+  +----------+    +----------+    +----------+  | <ColumnMeta>...  |
+  |ColumnData|    |ColumnData|    |ColumnData|  +------------------+
+  +----------+    +----------+    +----------+          |
+                                                        |
+                                                +------------------+
+                                                |    IO Entry...   |
+                                                +------------------+       
+``` 
+
+## Part 4 版本兼容
 #### IOEntry
 IOEntry表示一个IO单元，具体对应在Layout中就是：ObjectMeta、每一个Column的数据、BloomFilter区还有Header和Footer。
 除了Header和Footer，我们需要在每一个IOEntry头添加两个flag：Type&Version。
