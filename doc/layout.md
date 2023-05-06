@@ -1,6 +1,5 @@
 # MatrixOne Layout
 
-
 MatrixOne从0.5设计开始就已经确定采用列存结构来存储数据集，原因如下：
 ```
 1.很容易对AP优化
@@ -20,7 +19,7 @@ MatrixOne从0.5设计开始就已经确定采用列存结构来存储数据集�
 ```
 功能1：支持存储MatrixOne所有的业务类型数据。
 ```
-MatrixOne需对接S3或共享对象存储，每一个对象需要存储指定行数或Size的存储集，所以一个对象会存储多个IO单元（IOEntry），在此时我们称之为Block。
+MatrixOne需对接S3或共享对象存储，每一个对象需要存储指定行数或Size的存储集，所以一个对象会存储多个数据单元，对于每一个数据单元我们称之为Block。
 这些Block需要高效读取和管理，比如一个查询需要读取哪些Block，首先需要拿到Block的元数据并分析，然后再根据这些Block的元数据得到真正数据的存放地址并读取。
 ```
 功能2：便捷高效的元数据
@@ -36,6 +35,18 @@ MatrixOne需对接S3或共享对象存储，每一个对象需要存储指定行
 
 ![format.jpg](image/format.jpg)
 根据上诉几个问题，我们设计了现在的Layout，它由Header、数据区、索引区、元数据区和Footer组成。
+
+这些区域的作用如下：
+
+Header：记录了当前Layout的版本、元数据区的位置等信息。
+
+数据区：存储了数据对象的数据信息。
+
+索引区：存储了数据对象的索引信息。
+
+元数据区：存储了数据对象的元数据信息，这些元数据包括数据对象的类型、数据对象的大小、行数、列数、压缩算法等信息。
+
+Footer：可以看作是一个Header的镜像。
 
 ## Part 2 解析这些结构
 #### Extent
@@ -141,7 +152,7 @@ Chksum = ObjectMeta的checksum
 
 首先，通过Extent中的地址，向s3请求读一个IO Entry，并且放入MatrixOne的cache中。
 这个IO Entry就是ObjectMeta的全部内容。通过位移计算可以拿到BlockIndex，根据BlockIndex记录的Extent可以得到被读的
-BlockMeta，到吃为止我们元数据操作已经结束，剩下就是向s3请求读一个个Column Data了。
+BlockMeta，到此为止我们元数据操作已经结束，剩下就是向s3请求读一个个Column Data了。
 ```
       +-----------+
       |   Extent  |
