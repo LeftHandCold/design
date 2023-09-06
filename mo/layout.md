@@ -111,7 +111,7 @@ Chksum = ObjectMeta的checksum
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
 ```
-##通过Extent读数据
+## 通过Extent读数据
 
 在介绍[ObjectMeta](layout.md#objectmeta)篇章时，我们知道，MatrixOne向S3写入数据成功后，
 会返回一个记录ObjectMeta位置的Extent。这里时候我们会通过Extent来执行读数据的操作。
@@ -157,7 +157,7 @@ BlockMeta，到此为止我们元数据操作已经结束，剩下就是向s3请
                                                 +------------------+       
 ``` 
 
-## Part 4 版本兼容
+## 版本兼容
 #### IOEntry
 IOEntry表示一个IO单元，具体对应在Layout中就是：ObjectMeta、每一个Column的数据、BloomFilter区还有Header和Footer。
 除了Header和Footer，我们需要在每一个IOEntry头添加两个flag：Type&Version。
