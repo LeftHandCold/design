@@ -1,40 +1,6 @@
 # MatrixOne Layout
 
-MatrixOne从0.5设计开始就已经确定采用列存结构来存储数据集，原因如下：
-```
-1.很容易对AP优化
-
-2.通过引入Column Family的概念可以对负载灵活适配。假如所有列都是一个Column Family，
-也就是所有的列数据保存在一起，这就跟数据库的HEAP文件非常类似，可以表现出行存类似的行为，
-典型的OLTP数据库如PostgreSQL就是基于HEAP来做的存储引擎。假如每个列都是独立的Column Family，
-也就是每一列都独立存放，那么就是典型的列存。通过定义Column Family，用户可以方便地在行存和列存之间切换，这只需要在DDL表定义中指定即可。
-```
-
-## Part 1 Layout需要满足的条件和解决了什么问题
-设计一种Layout，首先要提出一个疑问。
-```
-我们到底需要满足什么功能和需求？
-```
-对于MatrixOne来说，需要存储的数据类型有很多种，比如：数据库表数据、元数据、数据库业务trace log、查询结果的cache...
-```
-功能1：支持存储MatrixOne所有的业务类型数据。
-```
-MatrixOne需对接S3或共享对象存储，每一个对象需要存储指定行数或Size的存储集，所以一个对象会存储多个数据单元，对于每一个数据单元我们称之为Block。
-这些Block需要高效读取和管理，比如一个查询需要读取哪些Block，首先需要拿到Block的元数据并分析，然后再根据这些Block的元数据得到真正数据的存放地址并读取。
-```
-功能2：便捷高效的元数据
-```
-当MatrixOne运行一段时间，客户需求不断增加，这时不得不修改当前的Layout。
-```
-功能3：支持数据的版本兼容和控制
-```
-支持数据分析工具和添加Scrub任务
-```
-功能4：支持从数据对象文件中重建MatrixOne的表结构
-```
-
-![format.jpg](image/format.jpg)
-根据上诉几个问题，我们设计了现在的Layout，它由Header、数据区、索引区、元数据区和Footer组成。
+现在的Layout，它由Header、数据区、索引区、元数据区和Footer组成。
 
 这些区域的作用如下：
 
@@ -48,7 +14,7 @@ Header：记录了当前Layout的版本、元数据区的位置等信息。
 
 Footer：可以看作是一个Header的镜像。
 
-## Part 2 解析这些结构
+## 数据结构
 #### Extent
 在MatrixOne中，Extent负责记录一个IOEntry的位置信息。
 ```
@@ -62,13 +28,13 @@ oSize = IOEntry压缩前的原始大小
 Algo = 压缩算法类型
 ```
 #### ObjectMeta
-![meta.jpg](image/meta.jpg)
 
-为什么我们先介绍ObjectMeta而不是Header，因为MatrixOne的查询业务是从ObjectMeta开始的。
+MatrixOne的查询业务是从ObjectMeta开始的。
 MatrixOne向S3写入数据成功后，会返回一个记录ObjectMeta位置的Extent，并保存到Catalog中。
 当MatrixOne执行查询操作需要读取数据时，可以通过这个Extent拿到ObjectMeta，从而拿到Block的真实数据。
 
-ObjectMeta由多个BlockMeta、一个MetaHeader、一个BlockIndex组成。
+ObjectMeta由一个MetaHeader，一个DataMeta、一个TombstoneMeta、多个SubMeta组成。
+每一个Meta由多个BlockMeta、一个MetaHeader、一个BlockIndex组成。
 MetaHeader和BlockMeta结构一致，用来记录整个Object的全局信息，比如dbID，TableID，ObjectName和Object全局数据的的ZoneMap、Ndv、nullCut等等。
 
 BlockIndex记录后面每一个BlockMeta的地址。ObjectMeta在MatrixOne系统中使用非常频繁，
@@ -145,7 +111,7 @@ Chksum = ObjectMeta的checksum
 |Chksum(4B)| MetaExtent(13B)|Version(2B)| Magic(8B)|
 +----------+----------------+-----------+----------+
 ```
-## Part 3 通过Extent读数据
+##通过Extent读数据
 
 在介绍[ObjectMeta](layout.md#objectmeta)篇章时，我们知道，MatrixOne向S3写入数据成功后，
 会返回一个记录ObjectMeta位置的Extent。这里时候我们会通过Extent来执行读数据的操作。
