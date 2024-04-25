@@ -29,8 +29,6 @@ bakcup
 │   ├── ab1e7ff0-3136-11ee-b513-acde48001122.inc
 │   ├── ab1e7f0a-3136-11ee-b513-acde48001122.inc
 │   └── ....
-
-4 directories, 8 files
 ```
 
 ### 恢复
