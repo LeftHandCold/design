@@ -62,11 +62,11 @@ BackupMeta: 保存备份的元数据信息，包括数据位置，时间戳等�
 │   ├── ab1e7f0a-3136-11ee-b513-acde48001122.inc : t100
 │   └── ....
 
-tae_list:
-object1|597766|checksum|t40  -> inc_t50
-object2|597766|checksum|t53  -> inc_t100
-object3|597766|checksum|t80  -> inc_t100
-object4|597766|checksum|t23  -> full_t30
-object5|597766|checksum|t13  -> full_t30
-object6|597766|checksum|t90  -> inc_t100
+inc_t100的tae_list:
+object1|597766|checksum|t40|false  -> inc_t50
+object2|597766|checksum|t53|true  -> inc_t100
+object3|597766|checksum|t80|true  -> inc_t100
+object4|597766|checksum|t23|false  -> full_t30
+object5|597766|checksum|t13|false  -> full_t30
+object6|597766|checksum|t90|true  -> inc_t100
 ```
