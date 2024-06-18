@@ -24,12 +24,12 @@
 
 //备份结果 
 bakcup
-├── BackupData
+|   |  // BackupData
 │   ├── full_backup:b147d8e-3136-11ee-b513-acde48001122
 │   ├── incremental_backup:ab1e7ff0-3136-11ee-b513-acde48001122
 │   ├── incremental_backup:ab1e7f0a-3136-11ee-b513-acde48001122
 │   └── ....
-├── BackupMeta
+|   |  // BackupMeta
 │   ├── b147d8e-3136-11ee-b513-acde48001122.full
 │   ├── ab1e7ff0-3136-11ee-b513-acde48001122.inc
 │   ├── ab1e7f0a-3136-11ee-b513-acde48001122.inc
