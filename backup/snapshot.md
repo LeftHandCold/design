@@ -49,3 +49,4 @@ gc: gc的meta，记录了一段时间create的object。
 
 # **Feature Detail Design**
 
+![alt_text](imgs/disk-cleaner.png "image_tooltip")
