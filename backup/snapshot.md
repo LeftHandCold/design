@@ -36,3 +36,16 @@ Shard
 ckp: checkpoint的元数据，记录了checkpoint的位置信息。
 gc: gc的meta，记录了一段时间create的object。
 ```
+
+## Key Design
+
+对于GC，主要有4个步骤：
+
+
+1. 定时器启动，出发GC操作，消费MO的Checkpoint。
+2. 分析Checkpoint，维护内存结构，生成GC meta，更新水位。
+3. 计算需要删除的数据，执行Delete Data操作。
+4. 处理GC meta，比如merge meta，删除meta。
+
+# **Feature Detail Design**
+
