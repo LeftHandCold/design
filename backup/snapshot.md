@@ -58,3 +58,97 @@ gc: gc的meta，记录了一段时间create的object。
 2. GCTable: 是一个map，用与存储一次性消费checkpoint后新添加的object，key是object的name，value记录了object的一些信息: create time, delete time, table id等。
 3. maxConsumed: 是DiskCleaner的水位，会记录消费的checkpoint水位，删除数据的水位，gc meta merge的水位等。
 4. Snapshot manager: 是一个manager，用于管理snapshot和table的信息。比如snapshot表存储的object，MO所有的table信息。
+
+### **Sample**
+```shell
+Shard
+├── ckp
+│   ├── t0_t5-0.ckp
+│   ├── t5-1_t10-0.ckp
+│   ├── t10-1_t15-0.ckp
+│   └── t15-1_t20-0.ckp
+│   ├── t0_t20-0.ckp  // global checkpoint
+│   └── t20-1_t25-0.ckp
+```
+
+<table>
+  <tr>
+   <td><strong>Object Name</strong>
+   </td>
+   <td><strong>Create TS</strong>
+   </td>
+   <td><strong>Drop TS</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>object1
+   </td>
+   <td>t2
+   </td>
+   <td>t7
+   </td>
+  </tr>
+  <tr>
+   <td>object2
+   </td>
+   <td>t3
+   </td>
+   <td>t4
+   </td>
+  </tr>
+  <tr>
+   <td>object3
+   </td>
+   <td>t11
+   </td>
+   <td>t18
+   </td>
+  </tr>
+  <tr>
+   <td>object4
+   </td>
+   <td>t16
+   </td>
+   <td>
+   </td>
+  </tr>
+  <tr>
+   <td>object5
+   </td>
+   <td>19
+   </td>
+   <td>t24
+   </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+   <td><strong>Snapshot</strong>
+   </td>
+   <td><strong>Snapshot TS</strong>
+   </td>
+   <td><strong>Account</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>snapshot1
+   </td>
+   <td>t9
+   </td>
+   <td>sys
+   </td>
+  </tr>
+  <tr>
+   <td>snapshot2
+   </td>
+   <td>t17
+   </td>
+   <td>sys
+   </td>
+  </tr>
+</table>
+
+### **Consuming checkpoints**
+
+![alt_text](imgs/consuming-checkpoints.png "image_tooltip")
