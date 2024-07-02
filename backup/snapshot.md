@@ -49,4 +49,12 @@ gc: gc的meta，记录了一段时间create的object。
 
 # **Feature Detail Design**
 
+### **DiskCleaner overview**
+
 ![alt_text](imgs/disk-cleaner.png "image_tooltip")
+
+
+1. ckpClient: 是一个client，是DiskCleaner用于获取当前水位之后的checkpoint entry。使用checkpoint entry可以读取checkpoint的数据。
+2. GCTable: 是一个map，用与存储一次性消费checkpoint后新添加的object，key是object的name，value记录了object的一些信息: create time, delete time, table id等。
+3. maxConsumed: 是DiskCleaner的水位，会记录消费的checkpoint水位，删除数据的水位，gc meta merge的水位等。
+4. Snapshot manager: 是一个manager，用于管理snapshot和table的信息。比如snapshot表存储的object，MO所有的table信息。
