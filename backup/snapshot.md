@@ -152,3 +152,7 @@ Shard
 ### **Consuming checkpoints**
 
 ![alt_text](imgs/consuming-checkpoints.png "image_tooltip")
+
+### **Soft GC**
+
+![alt_text](imgs/soft-gc.png "image_tooltip")
