@@ -176,5 +176,6 @@ Shard
 3. GCTable中的object如果不存在与Global Checkpoint中，会被判断为需要删除的object。
 4. 要删除的object会有create和drop TS，如果drop TS为空，代表object还在使用中，不会被删除。
 5. 要删除的object会二分查找Snapshot List，如果有Snapshot引用，不会被删除。判断规则是create和drop是否跨越Snapshot的TS。
+6. PITR则是一个范围，drop TS在PITR范围内的object不会被删除。
 
 ### **GC Meta**
