@@ -179,3 +179,5 @@ Shard
 6. PITR则是一个范围，drop TS在PITR范围内的object不会被删除。
 
 ### **GC Meta**
+
+执行过Delete object后，会查看GC meta，如果有需要merge的meta，会执行Merge操作。之后GC过期的Meta。
